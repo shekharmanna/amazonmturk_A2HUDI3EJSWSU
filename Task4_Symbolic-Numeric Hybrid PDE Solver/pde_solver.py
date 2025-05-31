@@ -30,31 +30,7 @@ class SymbolicNumericPDESolver:
         self.mesh = None
         self.time_dependent = False
         
-    # def define_pde_notuse(self, pde_expr, dependent_var, independent_vars, domain_bounds):
-    #     """
-    #     Define the PDE symbolically.
-        
-    #     Args:
-    #         pde_expr: SymPy expression representing the PDE (should equal 0)
-    #         dependent_var: The dependent variable (e.g., u)
-    #         independent_vars: List of independent variables (e.g., [x, t] or [x, y])
-    #         domain_bounds: Dictionary with bounds for each independent variable
-    #                       e.g., {'x': (0, 1), 't': (0, 1)} or {'x': (0, 1), 'y': (0, 1)}
-    #     """
-    #     self.pde = pde_expr
-    #     self.dependent_var = dependent_var
-    #     self.independent_vars = independent_vars
-    #     self.domain_bounds = domain_bounds
-        
-    #     # Check if time-dependent
-    #     self.time_dependent = any(str(var) == 't' for var in independent_vars)
-        
-    #     print(f"PDE defined: {pde_expr} = 0")
-    #     print(f"Dependent variable: {dependent_var}")
-    #     print(f"Independent variables: {independent_vars}")
-    #     print(f"Domain bounds: {domain_bounds}")
-        
-
+    
     def define_pde(self, pde_expr, dependent_var, independent_vars, domain_bounds):
         """
         Define the PDE symbolically.
@@ -84,26 +60,7 @@ class SymbolicNumericPDESolver:
         print(f"Dependent variable: {dependent_var}")
         print(f"Independent variables: {independent_vars}")
         print(f"Domain bounds: {domain_bounds}")
-
-    # def add_boundary_condition_notuse(self, condition_type, location, value_expr, variable=None):
-    #     """
-    #     Add boundary conditions.
-        
-    #     Args:
-    #         condition_type: 'dirichlet' or 'neumann'
-    #         location: Dictionary specifying boundary location, e.g., {'x': 0} or {'x': 1}
-    #         value_expr: SymPy expression for the boundary value
-    #         variable: For Neumann conditions, specify which variable to differentiate
-    #     """
-    #     bc = {
-    #         'type': condition_type,
-    #         'location': location,
-    #         'value': value_expr,
-    #         'variable': variable
-    #     }
-    #     self.boundary_conditions.append(bc)
-    #     print(f"Added {condition_type} BC at {location}: {value_expr}")
-        
+ 
     def add_boundary_condition(self, condition_type, location, value_expr, variable=None):
         """
         Add boundary conditions.
@@ -131,25 +88,7 @@ class SymbolicNumericPDESolver:
         """Set initial condition for time-dependent problems."""
         self.initial_condition = initial_expr
         print(f"Initial condition: {initial_expr}")
-        
-    # def create_mesh_notuse(self, resolution):
-    #     """
-    #     Create mesh grid based on domain bounds and resolution.
-        
-    #     Args:
-    #         resolution: Dictionary with number of points for each dimension
-    #                    e.g., {'x': 50, 't': 100} or {'x': 50, 'y': 50}
-    #     """
-    #     self.resolution = resolution
-    #     self.mesh = {}
-        
-    #     for var_name, var in zip([str(v) for v in self.independent_vars], self.independent_vars):
-    #         if var_name in self.domain_bounds:
-    #             bounds = self.domain_bounds[var_name]
-    #             n_points = resolution.get(var_name, 50)
-    #             self.mesh[var_name] = np.linspace(bounds[0], bounds[1], n_points)
-                
-    #     print(f"Mesh created with resolution: {resolution}")
+  
 
     def create_mesh(self, resolution):
         """
@@ -233,52 +172,6 @@ class SymbolicNumericPDESolver:
             
         return solution
 
-    # def _solve_steady_state_1d(self, dx):
-    #     x_vals = self.mesh['x']
-    #     n = len(x_vals)
-
-    #     A = np.zeros((n, n))
-    #     b = np.zeros(n)
-
-    #     # Infer source term f(x) from PDE: assume form d²u/dx² + f(x) = 0
-    #     u = self.dependent_var
-    #     x = self.independent_vars[0]
-    #     f_expr = -self.pde.subs(sp.Derivative(u, x, 2), 0).doit()
-    #     f_func = lambdify(x, f_expr, 'numpy')
-        
-    #     # Interior points
-    #     for i in range(1, n - 1):
-    #         A[i, i - 1] = 1 / dx**2
-    #         A[i, i] = -2 / dx**2
-    #         A[i, i + 1] = 1 / dx**2
-    #         b[i] = f_func(x_vals[i])
-
-    #     # Apply boundary conditions
-    #     for bc in self.boundary_conditions:
-    #         if 'x' in bc['location']:
-    #             x_bc = bc['location']['x']
-    #             idx = np.argmin(np.abs(x_vals - x_bc))
-    #             if bc['type'] == 'dirichlet':
-    #                 A[idx, :] = 0
-    #                 A[idx, idx] = 1
-    #                 b[idx] = float(bc['value'])
-    #             elif bc['type'] == 'neumann':
-    #                 if idx == 0:
-    #                     A[idx, 0] = -3 / (2 * dx)
-    #                     A[idx, 1] = 4 / (2 * dx)
-    #                     A[idx, 2] = -1 / (2 * dx)
-    #                 elif idx == n - 1:
-    #                     A[idx, n - 3] = 1 / (2 * dx)
-    #                     A[idx, n - 2] = -4 / (2 * dx)
-    #                     A[idx, n - 1] = 3 / (2 * dx)
-    #                 b[idx] = float(bc['value'])
-
-    #     try:
-    #         solution = np.linalg.solve(A, b)
-    #     except np.linalg.LinAlgError:
-    #         solution = np.linalg.lstsq(A, b, rcond=None)[0]
-
-    #     return solution
 
     def _solve_steady_state_1d(self, dx):
         x_vals = self.mesh['x']
@@ -334,50 +227,6 @@ class SymbolicNumericPDESolver:
 
         return solution
 
-
-    # def _solve_time_dependent_1d(self, dx):
-    #     """Solve time-dependent 1D PDE using explicit finite differences."""
-    #     x_vals = self.mesh['x']
-    #     t_vals = self.mesh['t']
-    #     dt = t_vals[1] - t_vals[0]
-    #     nx, nt = len(x_vals), len(t_vals)
-        
-    #     # Initialize solution array
-    #     u = np.zeros((nt, nx))
-        
-    #     # Set initial condition
-    #     if self.initial_condition:
-    #         x_sym = self.independent_vars[0]  # Assuming x is first
-    #         ic_func = lambdify(x_sym, self.initial_condition, 'numpy')
-    #         u[0, :] = ic_func(x_vals)
-        
-    #     # Time stepping (explicit Euler for simplicity)
-    #     for t_idx in range(nt - 1):
-    #         for x_idx in range(1, nx - 1):
-    #             # Second derivative approximation
-    #             u_xx = (u[t_idx, x_idx+1] - 2*u[t_idx, x_idx] + u[t_idx, x_idx-1]) / dx**2
-                
-    #             # Heat equation: du/dt = α * d²u/dx²
-    #             # Simple explicit scheme (assuming heat equation)
-    #             alpha = 0.1  # Thermal diffusivity
-    #             u[t_idx + 1, x_idx] = u[t_idx, x_idx] + dt * alpha * u_xx
-            
-    #         # Apply boundary conditions at each time step
-    #         for bc in self.boundary_conditions:
-    #             if 'x' in bc['location']:
-    #                 x_bc = bc['location']['x']
-    #                 x_idx = np.argmin(np.abs(x_vals - x_bc))
-                    
-    #                 if bc['type'] == 'dirichlet':
-    #                     # Check if BC depends on time
-    #                     if 't' in [str(s) for s in bc['value'].free_symbols]:
-    #                         t_sym = symbols('t')
-    #                         bc_func = lambdify(t_sym, bc['value'], 'numpy')
-    #                         u[t_idx + 1, x_idx] = bc_func(t_vals[t_idx + 1])
-    #                     else:
-    #                         u[t_idx + 1, x_idx] = float(bc['value'])
-        
-    #     return u
 
     def _solve_time_dependent_1d(self, dx):
         x_vals = self.mesh['x']

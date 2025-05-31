@@ -187,37 +187,7 @@ class TestSymbolicNumericPDESolver:
         with pytest.raises(ValueError, match="Create mesh first"):
             solver.solve()
     
-    # def test_solve_1d_steady_state_poisson(self, solver, basic_symbols):
-    #     """Test solving 1D Poisson equation with known analytical solution."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     # d²u/dx² = -2, u(0) = 0, u(1) = 0
-    #     # Analytical solution: u(x) = x(1-x)
-    #     pde_expr = diff(u_func, x, x) + 2
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.create_mesh({'x': 21})
-        
-    #     solution = solver.solve()
-        
-    #     # Check solution properties
-    #     assert solution is not None
-    #     assert len(solution) == 21
-    #     assert isinstance(solution, np.ndarray)
-        
-    #     # Check boundary conditions are satisfied
-    #     assert abs(solution[0] - 0) < 1e-10  # u(0) = 0
-    #     assert abs(solution[-1] - 0) < 1e-10  # u(1) = 0
-        
-    #     # Check against analytical solution at middle point
-    #     x_vals = solver.mesh['x']
-    #     x_mid = x_vals[len(x_vals)//2]
-    #     analytical_mid = x_mid * (1 - x_mid)
-    #     numerical_mid = solution[len(x_vals)//2]
-    #     assert abs(numerical_mid - analytical_mid) < 0.01  # Should be close
-    
+   
 
     def test_solve_1d_steady_state_poisson(self, solver, basic_symbols):
         x, u = basic_symbols['x'], basic_symbols['u']
@@ -251,22 +221,6 @@ class TestSymbolicNumericPDESolver:
         assert abs(numerical_mid - analytical_mid) < 0.01
 
 
-    # def test_solve_1d_with_neumann_bc(self, solver, basic_symbols):
-    #     """Test solving 1D problem with Neumann boundary condition."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x) + 1  # d²u/dx² = -1
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('neumann', {'x': 1}, 0, variable='x')
-    #     solver.create_mesh({'x': 21})
-        
-    #     solution = solver.solve()
-        
-    #     assert solution is not None
-    #     assert len(solution) == 21
-    #     assert abs(solution[0] - 0) < 1e-10  # Dirichlet BC at x=0
     
     def test_solve_1d_with_neumann_bc(self, solver, basic_symbols):
         """Test solving 1D problem with Neumann boundary condition."""
@@ -286,53 +240,6 @@ class TestSymbolicNumericPDESolver:
         assert len(solution) == 21
         assert abs(solution[0] - 0) < 1e-10  # Dirichlet BC at x=0
 
-
-    # def test_solve_2d_laplace_equation_notuse(self, solver, basic_symbols):
-    #     """Test solving 2D Laplace equation."""
-    #     x, y, u = basic_symbols['x'], basic_symbols['y'], basic_symbols['u']
-    #     u_func = Function('u')(x, y)
-    #     pde_expr = diff(u_func, x, x) + diff(u_func, y, y)  # ∇²u = 0
-        
-    #     solver.define_pde(pde_expr, u, [x, y], {'x': (0, 1), 'y': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'y': 0}, 1)
-    #     solver.add_boundary_condition('dirichlet', {'y': 1}, 0)
-    #     solver.create_mesh({'x': 11, 'y': 11})
-        
-    #     solution = solver.solve()
-        
-    #     assert solution is not None
-    #     assert solution.shape == (11, 11)
-        
-    #     # Test boundary conditions
-    #     assert np.allclose(solution[0, :], 0, atol=1e-10)  # x=0 boundary
-    #     assert np.allclose(solution[-1, :], 0, atol=1e-10)  # x=1 boundary
-    #     assert np.allclose(solution[:, 0], 1, atol=1e-10)  # y=0 boundary
-    #     assert np.allclose(solution[:, -1], 0, atol=1e-10)  # y=1 boundary
-    
-    # def test_solve_2d_laplace_equation(self, solver, basic_symbols): 
-    #     """Test solving 2D Laplace equation."""
-    #     x, y, u = basic_symbols['x'], basic_symbols['y'], basic_symbols['u']
-        
-    #     # Use symbolic form
-    #     pde_expr = diff(u, x, x) + diff(u, y, y)  # ∇²u = 0
-
-    #     solver.define_pde(pde_expr, u, [x, y], {'x': (0, 1), 'y': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'y': 0}, 1)
-    #     solver.add_boundary_condition('dirichlet', {'y': 1}, 0)
-    #     solver.create_mesh({'x': 11, 'y': 11})
-
-    #     solution = solver.solve()
-
-    #     assert solution is not None
-    #     assert solution.shape == (11, 11)
-    #     assert np.allclose(solution[0, :], 0, atol=1e-10)  # x=0
-    #     assert np.allclose(solution[-1, :], 0, atol=1e-10)  # x=1
-    #     assert np.allclose(solution[:, 0], 1, atol=1e-10)  # y=0
-    #     assert np.allclose(solution[:, -1], 0, atol=1e-10)  # y=1
 
 
     def test_solve_time_dependent_heat_equation(self, solver, basic_symbols):
@@ -362,31 +269,7 @@ class TestSymbolicNumericPDESolver:
         initial_max = np.max(np.abs(solution[0, :]))
         final_max = np.max(np.abs(solution[-1, :]))
         assert final_max < initial_max  # Solution should decay
-    
-    # def test_solve_time_dependent_heat_equation(self, solver, basic_symbols):
-    #     """Test solving 1D heat equation."""
-    #     x, t, u = basic_symbols['x'], basic_symbols['t'], basic_symbols['u']
-    #     alpha = 0.1
-
-    #     pde_expr = diff(u, t) - alpha * diff(u, x, x)
-        
-    #     solver.define_pde(pde_expr, u, [x, t], {'x': (0, 1), 't': (0, 0.1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, S(0))
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, S(0))
-    #     solver.set_initial_condition(sin(pi * x))
-    #     solver.create_mesh({'x': 21, 't': 11})
-
-    #     solution = solver.solve()
-
-    #     assert solution is not None
-    #     assert solution.shape == (11, 21)
-    #     assert np.allclose(solution[:, 0], 0, atol=1e-10)
-    #     assert np.allclose(solution[:, -1], 0, atol=1e-10)
-
-    #     initial_max = np.max(np.abs(solution[0, :]))
-    #     final_max = np.max(np.abs(solution[-1, :]))
-    #     assert final_max < initial_max
-
+   
 
     # # Error Handling Tests
     def test_invalid_pde_definition(self, solver, basic_symbols):
@@ -425,155 +308,4 @@ class TestSymbolicNumericPDESolver:
         # Should warn or handle gracefully
         solution = solver.solve()
         assert solution is not None  # Should still produce some result
-    
-    # # Utility and Property Tests
-    # def test_get_solution_at_point(self, solver, basic_symbols):
-    #     """Test getting solution value at specific points."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x) + 2
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.create_mesh({'x': 21})
-    #     solution = solver.solve()
-        
-    #     # Test interpolation at arbitrary point
-    #     value_at_half = solver.get_solution_at_point({'x': 0.5})
-    #     assert isinstance(value_at_half, float)
-    #     assert value_at_half > 0  # Should be positive for this problem
-    
-    # def test_solution_convergence(self, solver, basic_symbols):
-    #     """Test solution convergence with mesh refinement."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x) + 2
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-        
-    #     # Solve with coarse mesh
-    #     solver.create_mesh({'x': 11})
-    #     solution_coarse = solver.solve()
-        
-    #     # Solve with fine mesh
-    #     solver.create_mesh({'x': 21})
-    #     solution_fine = solver.solve()
-        
-    #     # Fine solution should be more accurate
-    #     x_vals_coarse = solver.mesh['x']
-    #     analytical_coarse = x_vals_coarse * (1 - x_vals_coarse)
-    #     error_coarse = np.max(np.abs(solution_coarse - analytical_coarse))
-        
-    #     solver.create_mesh({'x': 21})
-    #     solution_fine = solver.solve()
-    #     x_vals_fine = solver.mesh['x']
-    #     analytical_fine = x_vals_fine * (1 - x_vals_fine)
-    #     error_fine = np.max(np.abs(solution_fine - analytical_fine))
-        
-    #     assert error_fine < error_coarse  # Finer mesh should have smaller error
-    
-    # def test_solver_reset(self, solver, basic_symbols):
-    #     """Test resetting solver state."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x)
-        
-    #     # Set up solver
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.create_mesh({'x': 21})
-        
-    #     # Reset and check
-    #     solver.reset()
-    #     assert solver.pde is None
-    #     assert solver.boundary_conditions == []
-    #     assert solver.mesh is None
-    #     assert solver.solution is None
-    
-    # def test_multiple_pde_types(self, solver, basic_symbols):
-    #     """Test solver with different types of PDEs."""
-    #     x, y, t, u = basic_symbols['x'], basic_symbols['y'], basic_symbols['t'], basic_symbols['u']
-        
-    #     # Test wave equation: ∂²u/∂t² = c²∇²u
-    #     u_func = Function('u')(x, t)
-    #     c = 1.0
-    #     wave_pde = diff(u_func, t, t) - c**2 * diff(u_func, x, x)
-        
-    #     solver.define_pde(wave_pde, u, [x, t], {'x': (0, 1), 't': (0, 1)})
-    #     assert solver.time_dependent is True
-        
-    #     # Reset and test diffusion equation: ∂u/∂t = D∇²u
-    #     solver.reset()
-    #     u_func = Function('u')(x, y, t)
-    #     D = 0.1
-    #     diffusion_pde = diff(u_func, t) - D * (diff(u_func, x, x) + diff(u_func, y, y))
-        
-    #     solver.define_pde(diffusion_pde, u, [x, y, t], {'x': (0, 1), 'y': (0, 1), 't': (0, 0.5)})
-    #     assert solver.time_dependent is True
-    #     assert len(solver.independent_vars) == 3
-    
-    # def test_symbolic_coefficients(self, solver, basic_symbols):
-    #     """Test PDEs with symbolic coefficients."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     k = symbols('k', positive=True)
-        
-    #     # Variable coefficient PDE: d/dx(k(x) du/dx) + f(x) = 0
-    #     pde_expr = diff(k*x * diff(u_func, x), x) + sin(pi*x)
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.create_mesh({'x': 21})
-        
-    #     # Should handle symbolic coefficients
-    #     solution = solver.solve(parameters={'k': 1.0})
-    #     assert solution is not None
-    
-    # # Performance and Memory Tests
-    # def test_large_mesh_performance(self, solver, basic_symbols):
-    #     """Test solver performance with larger meshes."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x) + 1
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-    #     solver.create_mesh({'x': 101})  # Larger mesh
-        
-    #     import time
-    #     start_time = time.time()
-    #     solution = solver.solve()
-    #     solve_time = time.time() - start_time
-        
-    #     assert solution is not None
-    #     assert len(solution) == 101
-    #     assert solve_time < 10.0  # Should solve reasonably quickly
-    
-    # def test_memory_usage(self, solver, basic_symbols):
-    #     """Test that solver doesn't leak memory excessively."""
-    #     x, u = basic_symbols['x'], basic_symbols['u']
-    #     u_func = Function('u')(x)
-    #     pde_expr = diff(u_func, x, x) + 1
-        
-    #     solver.define_pde(pde_expr, u, [x], {'x': (0, 1)})
-    #     solver.add_boundary_condition('dirichlet', {'x': 0}, 0)
-    #     solver.add_boundary_condition('dirichlet', {'x': 1}, 0)
-        
-    #     # Solve multiple times and check memory doesn't grow excessively
-    #     import gc
-    #     for i in range(5):
-    #         solver.create_mesh({'x': 51})
-    #         solution = solver.solve()
-    #         del solution
-    #         gc.collect()
-        
-    #     # Test passes if no memory errors occur
-    #     assert True
-    # """Comprehensive test suite for the PDE solver."""
    
-    
