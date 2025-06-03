@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Modal PDF Content Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #fff, #f0f8ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: linear-gradient(45deg, rgba(102,126,234,0.05), rgba(118,75,162,0.05));
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+            transform: scale(1.02);
+        }
+
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background: rgba(76,175,80,0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            transform: scale(1.1);
+            color: #764ba2;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .extraction-options {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .option-group {
+            margin-bottom: 25px;
+        }
+
+        .option-group h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(102,126,234,0.1);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            accent-color: #667eea;
+            transform: scale(1.2);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102,126,234,0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.3s ease;
+            margin-right: 5px;
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .tab:not(.active):hover {
+            background: rgba(102,126,234,0.1);
+        }
+
+        .tab-content {
+            display: none;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .status-message {
+            text-align: center;
+            margin: 20px 0;
+            font-weight: 500;
+            display: none;
+        }
+
+        .extracted-content {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .metadata-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .metadata-table th,
+        .metadata-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .metadata-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            margin: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .success-message {
+            color: #155724;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Multi-Modal PDF Content Extractor</h1>
+            <p>Advanced PDF analysis with intelligent content extraction and dynamic scraping</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>📄 Upload PDF Document</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h3>Drag & Drop PDF File</h3>
+                    <p>or click to browse</p>
+                    <input type="file" id="fileInput" class="file-input" accept=".pdf" multiple>
+                </div>
+                <div id="fileInfo" style="margin-top: 15px; display: none;">
+                    <h4>Selected Files:</h4>
+                    <div id="fileList"></div>
+                </div>
+            </div>
+
+            <div class="extraction-options">
+                <h2>⚙️ Extraction Options</h2>
+                
+                <div class="option-group">
+                    <h3>Content Types</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="extractText" checked>
+                            <label for="extractText">📝 Text Content</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="extractImages" checked>
+                            <label for="extractImages">🖼️ Images</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="extractMetadata" checked>
+                            <label for="extractMetadata">📊 Metadata</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="extractTables" checked>
+                            <label for="extractTables">📋 Tables</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="option-group">
+                    <h3>Analysis Features</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="structureAnalysis" checked>
+                            <label for="structureAnalysis">🏗️ Structure Analysis</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="keywordExtraction">
+                            <label for="keywordExtraction">🔍 Keyword Extraction</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="languageDetection">
+                            <label for="languageDetection">🌐 Language Detection</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="readabilityAnalysis">
+                            <label for="readabilityAnalysis">📖 Readability Analysis</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" id="extractBtn" disabled>🚀 Extract Content</button>
+                <button class="btn" id="clearBtn">🗑️ Clear Results</button>
+            </div>
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="status-message" id="statusMessage"></div>
+
+        <div class="results-section" id="resultsSection">
+            <h2>📋 Extraction Results</h2>
+            
+            <div class="results-tabs">
+                <div class="tab active" data-tab="text">📝 Text</div>
+                <div class="tab" data-tab="images">🖼️ Images</div>
+                <div class="tab" data-tab="metadata">📊 Metadata</div>
+                <div class="tab" data-tab="analysis">🔍 Analysis</div>
+            </div>
+
+            <div class="tab-content active" id="textContent">
+                <div class="extracted-content" id="extractedText"></div>
+            </div>
+
+            <div class="tab-content" id="imagesContent">
+                <div id="extractedImages"></div>
+            </div>
+
+            <div class="tab-content" id="metadataContent">
+                <table class="metadata-table" id="metadataTable"></table>
+            </div>
+
+            <div class="tab-content" id="analysisContent">
+                <div id="analysisResults"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentFiles = [];
+        let extractedData = {
+            text: '',
+            images: [],
+            metadata: {},
+            analysis: {}
+        };
+
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Initialize particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.width = Math.random() * 4 + 2 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileList = document.getElementById('fileList');
+        const extractBtn = document.getElementById('extractBtn');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            currentFiles = files;
+            displayFileInfo(files);
+            extractBtn.disabled = false;
+        }
+
+        function displayFileInfo(files) {
+            fileInfo.style.display = 'block';
+            fileList.innerHTML = files.map(file => `
+                <div style="padding: 8px; background: #f8f9fa; border-radius: 5px; margin: 5px 0;">
+                    <strong>${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)
+                </div>
+            `).join('');
+        }
+
+        // Tab handling
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab + 'Content').classList.add('active');
+            });
+        });
+
+        // Main extraction function
+        extractBtn.addEventListener('click', async () => {
+            if (currentFiles.length === 0) return;
+
+            showProgress();
+            updateStatus('Starting extraction...');
+            
+            try {
+                for (let i = 0; i < currentFiles.length; i++) {
+                    const file = currentFiles[i];
+                    updateProgress((i / currentFiles.length) * 100);
+                    updateStatus(`Processing ${file.name}...`);
+                    
+                    await extractFromPDF(file);
+                }
+                
+                updateProgress(100);
+                updateStatus('Extraction completed successfully!');
+                showResults();
+                
+            } catch (error) {
+                showError('Extraction failed: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        });
+
+        async function extractFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            
+            // Extract metadata
+            if (document.getElementById('extractMetadata').checked) {
+                const metadata = await pdf.getMetadata();
+                extractedData.metadata = {
+                    title: metadata.info.Title || 'N/A',
+                    author: metadata.info.Author || 'N/A',
+                    creator: metadata.info.Creator || 'N/A',
+                    producer: metadata.info.Producer || 'N/A',
+                    creationDate: metadata.info.CreationDate || 'N/A',
+                    modDate: metadata.info.ModDate || 'N/A',
+                    pages: pdf.numPages,
+                    fileSize: (file.size / 1024 / 1024).toFixed(2) + ' MB'
+                };
+            }
+
+            let allText = '';
+            const images = [];
+
+            // Process each page
+            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                const page = await pdf.getPage(pageNum);
+                
+                // Extract text
+                if (document.getElementById('extractText').checked) {
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    allText += `\n=== Page ${pageNum} ===\n${pageText}\n`;
+                }
+
+                // Extract images
+                if (document.getElementById('extractImages').checked) {
+                    const operatorList = await page.getOperatorList();
+                    const pageImages = await extractImagesFromPage(page, operatorList, pageNum);
+                    images.push(...pageImages);
+                }
+            }
+
+            extractedData.text = allText;
+            extractedData.images = images;
+
+            // Perform analysis
+            if (document.getElementById('structureAnalysis').checked ||
+                document.getElementById('keywordExtraction').checked ||
+                document.getElementById('languageDetection').checked ||
+                document.getElementById('readabilityAnalysis').checked) {
+                
+                await performAnalysis(allText);
+            }
+        }
+
+        async function extractImagesFromPage(page, operatorList, pageNum) {
+            const images = [];
+            const viewport = page.getViewport({ scale: 1.0 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+
+            await page.render(renderContext).promise;
+            
+            // Convert canvas to image
+            const imageData = canvas.toDataURL('image/png');
+            images.push({
+                page: pageNum,
+                data: imageData,
+                width: viewport.width,
+                height: viewport.height
+            });
+
+            return images;
+        }
+
+        async function performAnalysis(text) {
+            const analysis = {};
+
+            if (document.getElementById('structureAnalysis').checked) {
+                analysis.structure = analyzeStructure(text);
+            }
+
+            if (document.getElementById('keywordExtraction').checked) {
+                analysis.keywords = extractKeywords(text);
+            }
+
+            if (document.getElementById('languageDetection').checked) {
+                analysis.language = detectLanguage(text);
+            }
+
+            if (document.getElementById('readabilityAnalysis').checked) {
+                analysis.readability = analyzeReadability(text);
+            }
+
+            extractedData.analysis = analysis;
+        }
+
+        function analyzeStructure(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            const paragraphs = text.split('\n\n').filter(p => p.trim());
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim());
+            const words = text.split(/\s+/).filter(w => w.trim());
+
+            return {
+                lines: lines.length,
+                paragraphs: paragraphs.length,
+                sentences: sentences.length,
+                words: words.length,
+                characters: text.length,
+                avgWordsPerSentence: Math.round(words.length / sentences.length),
+                avgSentencesPerParagraph: Math.round(sentences.length / paragraphs.length)
+            };
+        }
+
+        function extractKeywords(text) {
+            const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
+            const frequency = {};
+            
+            words.forEach(word => {
+                frequency[word] = (frequency[word] || 0) + 1;
+            });
+
+            // Common words to filter out
+            const commonWords = new Set(['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'had', 'word', 'time', 'will', 'each', 'about', 'how', 'then', 'them', 'these', 'way', 'she', 'may', 'what', 'said', 'use', 'your', 'now', 'him', 'has', 'his', 'get', 'who', 'day', 'too', 'any', 'new', 'see', 'man', 'two', 'old', 'say', 'come', 'its', 'over', 'did', 'try', 'ask', 'went', 'tell', 'where', 'put', 'why', 'been', 'find', 'off', 'long', 'take', 'got', 'own', 'think', 'down', 'more', 'other', 'when', 'look', 'first', 'into', 'would', 'after', 'could', 'right', 'there', 'people', 'only', 'before', 'should', 'through', 'another', 'between', 'little', 'being', 'great', 'those', 'well', 'very', 'here', 'even', 'good', 'much', 'some', 'this', 'that', 'with', 'have', 'from', 'they', 'know', 'want', 'make', 'just', 'also', 'like', 'such', 'back', 'work', 'life', 'most', 'same', 'hand', 'high', 'year', 'many', 'call', 'give', 'than', 'last', 'part', 'does', 'made', 'help', 'need', 'show', 'turn', 'move', 'still', 'small', 'place', 'every', 'home', 'both', 'under', 'never', 'while', 'again', 'might', 'house', 'without', 'keep', 'thought', 'state', 'line', 'world', 'school', 'set', 'write', 'play', 'act', 'run', 'around', 'sound', 'learn', 'three', 'water', 'end', 'head', 'read', 'start', 'means', 'name', 'black', 'white', 'began', 'left', 'story', 'point', 'often', 'talk', 'seem', 'near', 'open', 'example', 'far', 'night', 'walk', 'sea', 'grow', 'once', 'real', 'book', 'carry', 'different', 'let', 'stop', 'close', 'feet', 'hear', 'live', 'group', 'until', 'enough', 'face', 'watch', 'below', 'together', 'city', 'cut', 'big', 'country', 'family', 'must', 'along', 'important', 'car', 'miss', 'later', 'side', 'page', 'above', 'saw', 'beginning', 'almost', 'food', 'eye', 'air', 'mother', 'land', 'light', 'something', 'hard', 'across', 'sure', 'children', 'young', 'girl', 'boy', 'feel', 'leave', 'few', 'men', 'mind', 'course', 'door', 'room', 'form', 'fact', 'kind', 'love', 'knew', 'less', 'hope', 'fire', 'dog', 'used', 'yet', 'power', 'field', 'picture', 'going', 'earth', 'music', 'shall', 'cause', 'seen', 'list', 'moment', 'order', 'become', 'happen', 'answer', 'change', 'questions', 'heard', 'voice', 'reason', 'matter', 'itself', 'turned', 'making', 'present', 'person', 'usually', 'early', 'among', 'having', 'given', 'toward', 'always', 'perhaps', 'nothing', 'certain', 'either', 'class', 'during', 'following', 'several', 'outside', 'problem', 'against', 'member', 'second', 'public', 'number', 'within', 'rather', 'however', 'service', 'program', 'possible', 'someone', 'special', 'general', 'interest', 'million', 'company', 'society', 'control', 'process', 'business', 'college', 'student', 'office', 'system', 'meeting', 'local', 'report', 'though', 'better', 'government', 'national', 'political', 'community', 'training', 'research', 'sometimes', 'feeling', 'probably', 'whether', 'herself', 'himself', 'development', 'information', 'economic', 'various', 'including', 'certainly', 'experience', 'personal', 'yourself', 'building', 'result', 'support', 'question', 'provide', 'account', 'themselves', 'everything', 'anything', 'although', 'section', 'project', 'university']);
+
+            // Filter out common words and get top keywords
+            const filtered = Object.entries(frequency)
+                .filter(([word, count]) => !commonWords.has(word) && count > 1)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 20);
+
+            return filtered.map(([word, count]) => ({ word, count }));
+        }
+
+        function detectLanguage(text) {
+            // Simple language detection based on common words
+            const sample = text.toLowerCase().substring(0, 1000);
+            
+            const languages = {
+                english: ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had'],
+                spanish: ['que', 'por', 'con', 'una', 'los', 'del', 'las', 'para', 'sus', 'como'],
+                french: ['que', 'des', 'les', 'par', 'sur', 'avec', 'pour', 'dans', 'une', 'aux'],
+                german: ['der', 'die', 'und', 'von', 'den', 'des', 'mit', 'sich', 'auf', 'für'],
+                italian: ['che', 'per', 'con', 'una', 'del', 'della', 'alla', 'nel', 'delle', 'degli']
+            };
+
+            let maxScore = 0;
+            let detectedLanguage = 'Unknown';
+            
+            for (const [lang, words] of Object.entries(languages)) {
+                const score = words.reduce((acc, word) => {
+                    return acc + (sample.includes(word) ? 1 : 0);
+                }, 0);
+                
+                if (score > maxScore) {
+                    maxScore = score;
+                    detectedLanguage = lang.charAt(0).toUpperCase() + lang.slice(1);
+                }
+            }
+
+            return { language: detectedLanguage, confidence: maxScore / 10 };
+        }
+
+        function analyzeReadability(text) {
+            const sentences = text.split(/[.!?]+/).filter(s => s.trim()).length;
+            const words = text.split(/\s+/).filter(w => w.trim()).length;
+            const syllables = countSyllables(text);
+            
+            // Flesch Reading Ease Score
+            const fleschScore = 206.835 - (1.015 * (words / sentences)) - (84.6 * (syllables / words));
+            
+            let readingLevel;
+            if (fleschScore >= 90) readingLevel = 'Very Easy';
+            else if (fleschScore >= 80) readingLevel = 'Easy';
+            else if (fleschScore >= 70) readingLevel = 'Fairly Easy';
+            else if (fleschScore >= 60) readingLevel = 'Standard';
+            else if (fleschScore >= 50) readingLevel = 'Fairly Difficult';
+            else if (fleschScore >= 30) readingLevel = 'Difficult';
+            else readingLevel = 'Very Difficult';
+
+            return {
+                fleschScore: Math.round(fleschScore),
+                readingLevel,
+                avgWordsPerSentence: Math.round(words / sentences),
+                avgSyllablesPerWord: Math.round((syllables / words) * 100) / 100
+            };
+        }
+
+        function countSyllables(text) {
+            const words = text.toLowerCase().match(/\b[a-z]+\b/g) || [];
+            return words.reduce((total, word) => {
+                // Simple syllable counting algorithm
+                let syllables = word.match(/[aeiouy]+/g);
+                if (syllables) {
+                    let count = syllables.length;
+                    if (word.endsWith('e')) count--;
+                    if (count <= 0) count = 1;
+                    return total + count;
+                }
+                return total + 1;
+            }, 0);
+        }
+
+        // Display functions
+        function showResults() {
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.style.display = 'block';
+
+            // Display text content
+            document.getElementById('extractedText').textContent = extractedData.text || 'No text content extracted.';
+
+            // Display images
+            const imagesContainer = document.getElementById('extractedImages');
+            if (extractedData.images.length > 0) {
+                imagesContainer.innerHTML = extractedData.images.map((img, index) => `
+                    <div style="margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+                        <h4>Page ${img.page} - Image ${index + 1}</h4>
+                        <img src="${img.data}" class="image-preview" alt="Extracted image from page ${img.page}">
+                        <p><strong>Dimensions:</strong> ${img.width} x ${img.height} pixels</p>
+                    </div>
+                `).join('');
+            } else {
+                imagesContainer.innerHTML = '<p>No images extracted.</p>';
+            }
+
+            // Display metadata
+            const metadataTable = document.getElementById('metadataTable');
+            if (Object.keys(extractedData.metadata).length > 0) {
+                metadataTable.innerHTML = `
+                    <thead>
+                        <tr><th>Property</th><th>Value</th></tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(extractedData.metadata).map(([key, value]) => 
+                            `<tr><td>${key.charAt(0).toUpperCase() + key.slice(1)}</td><td>${value}</td></tr>`
+                        ).join('')}
+                    </tbody>
+                `;
+            } else {
+                metadataTable.innerHTML = '<p>No metadata extracted.</p>';
+            }
+
+            // Display analysis
+            const analysisContainer = document.getElementById('analysisResults');
+            if (Object.keys(extractedData.analysis).length > 0) {
+                let analysisHtml = '';
+                
+                if (extractedData.analysis.structure) {
+                    const struct = extractedData.analysis.structure;
+                    analysisHtml += `
+                        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <h4>📊 Document Structure</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                                <div><strong>Lines:</strong> ${struct.lines}</div>
+                                <div><strong>Paragraphs:</strong> ${struct.paragraphs}</div>
+                                <div><strong>Sentences:</strong> ${struct.sentences}</div>
+                                <div><strong>Words:</strong> ${struct.words}</div>
+                                <div><strong>Characters:</strong> ${struct.characters}</div>
+                                <div><strong>Avg Words/Sentence:</strong> ${struct.avgWordsPerSentence}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (extractedData.analysis.keywords) {
+                    analysisHtml += `
+                        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <h4>🔍 Top Keywords</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                                ${extractedData.analysis.keywords.slice(0, 15).map(kw => 
+                                    `<span style="background: #667eea; color: white; padding: 5px 10px; border-radius: 15px; font-size: 0.9rem;">
+                                        ${kw.word} (${kw.count})
+                                    </span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (extractedData.analysis.language) {
+                    const lang = extractedData.analysis.language;
+                    analysisHtml += `
+                        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <h4>🌐 Language Detection</h4>
+                            <p><strong>Detected Language:</strong> ${lang.language}</p>
+                            <p><strong>Confidence:</strong> ${Math.round(lang.confidence * 100)}%</p>
+                        </div>
+                    `;
+                }
+
+                if (extractedData.analysis.readability) {
+                    const read = extractedData.analysis.readability;
+                    analysisHtml += `
+                        <div style="margin-bottom: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                            <h4>📖 Readability Analysis</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px;">
+                                <div><strong>Flesch Score:</strong> ${read.fleschScore}</div>
+                                <div><strong>Reading Level:</strong> ${read.readingLevel}</div>
+                                <div><strong>Avg Words/Sentence:</strong> ${read.avgWordsPerSentence}</div>
+                                <div><strong>Avg Syllables/Word:</strong> ${read.avgSyllablesPerWord}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                analysisContainer.innerHTML = analysisHtml;
+            } else {
+                analysisContainer.innerHTML = '<p>No analysis performed.</p>';
+            }
+        }
+
+        // Utility functions
+        function showProgress() {
+            document.getElementById('progressBar').style.display = 'block';
+            document.getElementById('statusMessage').style.display = 'block';
+        }
+
+        function hideProgress() {
+            document.getElementById('progressBar').style.display = 'none';
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+
+        function updateStatus(message) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status-message';
+        }
+
+        function showError(message) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.innerHTML = `<div class="error-message">${message}</div>`;
+            statusEl.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.innerHTML = `<div class="success-message">${message}</div>`;
+            statusEl.style.display = 'block';
+        }
+
+        // Clear results
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('resultsSection').style.display = 'none';
+            currentFiles = [];
+            extractedData = { text: '', images: [], metadata: {}, analysis: {} };
+            document.getElementById('fileInfo').style.display = 'none';
+            extractBtn.disabled = true;
+            hideProgress();
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Add some interactive effects
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('mouseenter', () => {
+                    btn.style.transform = 'translateY(-2px) scale(1.05)';
+                });
+                
+                btn.addEventListener('mouseleave', () => {
+                    btn.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Add loading animation to extraction button
+            const originalExtractText = extractBtn.textContent;
+            extractBtn.addEventListener('click', () => {
+                if (!extractBtn.disabled) {
+                    extractBtn.textContent = '⏳ Extracting...';
+                    extractBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        extractBtn.textContent = originalExtractText;
+                        if (currentFiles.length > 0) {
+                            extractBtn.disabled = false;
+                        }
+                    }, 3000);
+                }
+            });
+
+            console.log('Multi-Modal PDF Content Extractor initialized successfully!');
+        });
+    </script>
+</body>
+</html>
