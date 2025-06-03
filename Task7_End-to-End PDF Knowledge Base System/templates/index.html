@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Knowledge Base</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+        .loading-spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+    <div class="container bg-white shadow-lg rounded-lg my-8">
+        <h1 class="text-3xl font-bold text-blue-600 mb-6 text-center">PDF Knowledge Base System</h1>
+
+        <div class="mb-8 p-6 border border-gray-200 rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4">Upload PDF</h2>
+            <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
+                <div>
+                    <label for="pdfFile" class="block text-sm font-medium text-gray-700">Select PDF File:</label>
+                    <input type="file" id="pdfFile" name="pdf_file" accept=".pdf" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                </div>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Upload and Process
+                    <span id="uploadSpinner" class="loading-spinner hidden"></span>
+                </button>
+                <p id="uploadMessage" class="mt-2 text-sm"></p>
+            </form>
+        </div>
+
+        <div class="mb-8 p-6 border border-gray-200 rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4">Keyword Search</h2>
+            <div class="flex space-x-2 mb-4">
+                <input type="text" id="searchQuery" placeholder="Enter keywords to search documents..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"/>
+                <button id="searchButton" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    Search
+                    <span id="searchSpinner" class="loading-spinner hidden"></span>
+                </button>
+            </div>
+            <div id="searchResults" class="space-y-4">
+                </div>
+        </div>
+
+        <div class="p-6 border border-gray-200 rounded-lg">
+            <h2 class="text-2xl font-semibold mb-4">Ask a Question (RAG)</h2>
+            <div class="flex flex-col space-y-4">
+                <textarea id="ragQuery" placeholder="Ask a question about the uploaded documents..." rows="3" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                <button id="ragButton" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                    Get Answer
+                    <span id="ragSpinner" class="loading-spinner hidden"></span>
+                </button>
+            </div>
+            <div id="ragAnswer" class="mt-4 p-4 bg-gray-50 border border-gray-300 rounded-lg min-h-[100px]">
+                <p class="text-gray-700">Your answer will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PDF Upload Logic ---
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('pdfFile');
+            const uploadMessage = document.getElementById('uploadMessage');
+            const uploadSpinner = document.getElementById('uploadSpinner');
+
+            if (fileInput.files.length === 0) {
+                uploadMessage.textContent = 'Please select a file to upload.';
+                uploadMessage.className = 'mt-2 text-sm text-red-600';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('pdf_file', fileInput.files[0]);
+
+            uploadSpinner.classList.remove('hidden');
+            uploadMessage.textContent = 'Uploading and processing... This might take a moment as chunks are embedded.';
+            uploadMessage.className = 'mt-2 text-sm text-blue-600';
+
+            try {
+                const response = await fetch('/upload_pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    uploadMessage.textContent = data.message + (data.doc_id ? ` Document ID: ${data.doc_id}` : '');
+                    uploadMessage.className = 'mt-2 text-sm text-green-600';
+                    fileInput.value = ''; // Clear the file input
+                } else {
+                    uploadMessage.textContent = 'Error: ' + (data.error || 'Unknown error');
+                    uploadMessage.className = 'mt-2 text-sm text-red-600';
+                }
+            } catch (error) {
+                uploadMessage.textContent = 'Network error: ' + error.message;
+                uploadMessage.className = 'mt-2 text-sm text-red-600';
+            } finally {
+                uploadSpinner.classList.add('hidden');
+            }
+        });
+
+        // --- Keyword Search Logic ---
+        document.getElementById('searchButton').addEventListener('click', async function() {
+            const searchQuery = document.getElementById('searchQuery').value;
+            const searchResultsDiv = document.getElementById('searchResults');
+            const searchSpinner = document.getElementById('searchSpinner');
+
+            if (!searchQuery.trim()) {
+                searchResultsDiv.innerHTML = '<p class="text-red-600">Please enter a search query.</p>';
+                return;
+            }
+
+            searchSpinner.classList.remove('hidden');
+            searchResultsDiv.innerHTML = '<p class="text-blue-600">Searching...</p>';
+
+            try {
+                const response = await fetch(`/search?q=${encodeURIComponent(searchQuery)}`);
+                const results = await response.json();
+
+                if (response.ok) {
+                    if (results.length > 0) {
+                        searchResultsDiv.innerHTML = results.map(doc => `
+                            <div class="border border-gray-300 p-4 rounded-lg shadow-sm bg-gray-50">
+                                <h3 class="text-lg font-semibold text-blue-700">${doc.title || 'Untitled'}</h3>
+                                <p class="text-sm text-gray-600">Author: ${doc.author || 'N/A'} | Date: ${new Date(doc.publication_date).toLocaleDateString()}</p>
+                                <p class="mt-2 text-gray-800 text-base">${doc.summary || 'No summary available.'}</p>
+                                <p class="text-xs text-gray-500 mt-1">Keywords: ${doc.keywords ? doc.keywords.join(', ') : 'N/A'}</p>
+                                <p class="text-xs text-gray-500">Persons: ${doc.persons ? doc.persons.join(', ') : 'N/A'}</p>
+                                <p class="text-xs text-gray-500">Organizations: ${doc.organizations ? doc.organizations.join(', ') : 'N/A'}</p>
+                                <p class="text-xs text-gray-500">Locations: ${doc.locations ? doc.locations.join(', ') : 'N/A'}</p>
+                                <a href="/document/${doc._id}" target="_blank" class="text-blue-500 hover:underline text-sm mt-2 inline-block">View Full Details</a>
+                            </div>
+                        `).join('');
+                    } else {
+                        searchResultsDiv.innerHTML = '<p class="text-gray-600">No results found for your query.</p>';
+                    }
+                } else {
+                    searchResultsDiv.innerHTML = `<p class="text-red-600">Error: ${results.error || 'Unknown error during search'}</p>`;
+                }
+            } catch (error) {
+                searchResultsDiv.innerHTML = `<p class="text-red-600">Network error during search: ${error.message}</p>`;
+            } finally {
+                searchSpinner.classList.add('hidden');
+            }
+        });
+
+        // --- RAG (Ask a Question) Logic ---
+        document.getElementById('ragButton').addEventListener('click', async function() {
+            const ragQuery = document.getElementById('ragQuery').value;
+            const ragAnswerDiv = document.getElementById('ragAnswer');
+            const ragSpinner = document.getElementById('ragSpinner');
+
+            if (!ragQuery.trim()) {
+                ragAnswerDiv.innerHTML = '<p class="text-red-600">Please enter a question.</p>';
+                return;
+            }
+
+            ragSpinner.classList.remove('hidden');
+            ragAnswerDiv.innerHTML = '<p class="text-blue-600">Thinking...</p>';
+
+            try {
+                const response = await fetch(`/ask_rag?q=${encodeURIComponent(ragQuery)}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    ragAnswerDiv.innerHTML = `<p class="text-gray-800">${data.answer}</p>`;
+                } else {
+                    ragAnswerDiv.innerHTML = `<p class="text-red-600">Error: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                ragAnswerDiv.innerHTML = `<p class="text-red-600">Network error: ${error.message}</p>`;
+            } finally {
+                ragSpinner.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
